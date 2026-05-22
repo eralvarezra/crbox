@@ -51,3 +51,89 @@ export async function submitPackageRequest(formData: FormData) {
 
   redirect('/request?success=1')
 }
+
+export async function approveRequest(requestId: string, _formData: FormData) {
+  await requireAdmin()
+
+  const request = await db.query.packageRequests.findFirst({
+    where: eq(packageRequests.id, requestId),
+  })
+  if (!request) throw new Error('Solicitud no encontrada')
+
+  const existing = await db.query.packages.findFirst({
+    where: eq(packages.trackingNumber, request.trackingNumber),
+    columns: { id: true },
+  })
+  if (existing) {
+    redirect(`/admin/requests/${requestId}?duplicate=1`)
+  }
+
+  const customerName = request.customerName ?? 'Cliente'
+
+  const [pkg] = await db
+    .insert(packages)
+    .values({
+      trackingNumber: request.trackingNumber,
+      customerName,
+      whatsappNumber: request.whatsappNumber,
+      clerkUserId: request.clerkUserId,
+    })
+    .returning()
+
+  await db.insert(statusHistory).values({
+    packageId: pkg.id,
+    status: 'received_usa',
+    note: null,
+  })
+
+  await db
+    .update(packageRequests)
+    .set({ status: 'approved', updatedAt: new Date() })
+    .where(eq(packageRequests.id, requestId))
+
+  try {
+    await sendRequestApproved({
+      to: request.whatsappNumber,
+      customerName,
+      trackingNumber: request.trackingNumber,
+    })
+  } catch (err) {
+    console.error('WhatsApp notification failed:', err)
+    redirect(`/admin/requests/${requestId}?whatsapp_error=1`)
+  }
+
+  redirect('/admin/requests')
+}
+
+export async function rejectRequest(requestId: string, formData: FormData) {
+  await requireAdmin()
+
+  const reason = formData.get('reason')?.toString().trim()
+  if (!reason) throw new Error('El motivo de rechazo es requerido')
+
+  const request = await db.query.packageRequests.findFirst({
+    where: eq(packageRequests.id, requestId),
+  })
+  if (!request) throw new Error('Solicitud no encontrada')
+
+  const customerName = request.customerName ?? 'Cliente'
+
+  await db
+    .update(packageRequests)
+    .set({ status: 'rejected', rejectionReason: reason, updatedAt: new Date() })
+    .where(eq(packageRequests.id, requestId))
+
+  try {
+    await sendRequestRejected({
+      to: request.whatsappNumber,
+      customerName,
+      trackingNumber: request.trackingNumber,
+      reason,
+    })
+  } catch (err) {
+    console.error('WhatsApp notification failed:', err)
+    redirect(`/admin/requests/${requestId}?whatsapp_error=1`)
+  }
+
+  redirect('/admin/requests')
+}
