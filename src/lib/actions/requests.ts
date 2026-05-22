@@ -25,6 +25,11 @@ export async function submitPackageRequest(formData: FormData) {
   if (!trackingNumber || !whatsappNumber) throw new Error('Faltan campos requeridos')
   if (!invoiceFile || invoiceFile.size === 0) throw new Error('La factura es requerida')
 
+  const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
+  if (!ALLOWED_MIME_TYPES.includes(invoiceFile.type)) {
+    throw new Error('Tipo de archivo no permitido. Solo se aceptan imágenes y PDF.')
+  }
+
   let customerName: string | null = null
 
   if (userId) {
@@ -59,6 +64,7 @@ export async function approveRequest(requestId: string, _formData: FormData) {
     where: eq(packageRequests.id, requestId),
   })
   if (!request) throw new Error('Solicitud no encontrada')
+  if (request.status !== 'pending') throw new Error('Esta solicitud ya fue procesada')
 
   const existing = await db.query.packages.findFirst({
     where: eq(packages.trackingNumber, request.trackingNumber),
@@ -70,15 +76,25 @@ export async function approveRequest(requestId: string, _formData: FormData) {
 
   const customerName = request.customerName ?? 'Cliente'
 
-  const [pkg] = await db
-    .insert(packages)
-    .values({
-      trackingNumber: request.trackingNumber,
-      customerName,
-      whatsappNumber: request.whatsappNumber,
-      clerkUserId: request.clerkUserId,
-    })
-    .returning()
+  let pkg: typeof packages.$inferSelect
+  try {
+    const [inserted] = await db
+      .insert(packages)
+      .values({
+        trackingNumber: request.trackingNumber,
+        customerName,
+        whatsappNumber: request.whatsappNumber,
+        clerkUserId: request.clerkUserId,
+      })
+      .returning()
+    pkg = inserted
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('23505') || msg.includes('unique')) {
+      redirect(`/admin/requests/${requestId}?duplicate=1`)
+    }
+    throw err
+  }
 
   await db.insert(statusHistory).values({
     packageId: pkg.id,
@@ -115,6 +131,7 @@ export async function rejectRequest(requestId: string, formData: FormData) {
     where: eq(packageRequests.id, requestId),
   })
   if (!request) throw new Error('Solicitud no encontrada')
+  if (request.status !== 'pending') throw new Error('Esta solicitud ya fue procesada')
 
   const customerName = request.customerName ?? 'Cliente'
 
