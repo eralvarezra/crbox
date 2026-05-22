@@ -23,3 +23,32 @@ export async function sendStatusUpdate(params: {
     body,
   })
 }
+
+export async function sendRequestApproved(params: {
+  to: string
+  customerName: string
+  trackingNumber: string
+}): Promise<void> {
+  const { to, customerName, trackingNumber } = params
+  const body = `Hola ${customerName}, tu solicitud para el paquete ${trackingNumber} fue aprobada. Ya puedes rastrear tu paquete en nuestro sistema.`
+  await getClient().messages.create({
+    from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
+    to: `whatsapp:${to}`,
+    body,
+  })
+}
+
+export async function sendRequestRejected(params: {
+  to: string
+  customerName: string
+  trackingNumber: string
+  reason: string
+}): Promise<void> {
+  const { to, customerName, trackingNumber, reason } = params
+  const body = `Hola ${customerName}, tu solicitud para el paquete ${trackingNumber} fue rechazada. Motivo: ${reason}.`
+  await getClient().messages.create({
+    from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
+    to: `whatsapp:${to}`,
+    body,
+  })
+}

@@ -8,7 +8,7 @@ vi.mock('twilio', () => ({
   }),
 }))
 
-import { sendStatusUpdate } from './whatsapp'
+import { sendStatusUpdate, sendRequestApproved, sendRequestRejected } from './whatsapp'
 
 describe('sendStatusUpdate', () => {
   beforeEach(() => {
@@ -62,5 +62,50 @@ describe('sendStatusUpdate', () => {
         body: 'Hola María, tu paquete ABC123 ha sido actualizado: *Entregado*.',
       })
     )
+  })
+})
+
+describe('sendRequestApproved', () => {
+  beforeEach(() => {
+    mockCreate.mockClear()
+    mockCreate.mockResolvedValue({ sid: 'SM123' })
+    process.env.TWILIO_WHATSAPP_FROM = '+14155238886'
+  })
+
+  it('sends approval message with tracking number', async () => {
+    await sendRequestApproved({
+      to: '+50688888888',
+      customerName: 'Juan Pérez',
+      trackingNumber: '1Z999AA1',
+    })
+
+    expect(mockCreate).toHaveBeenCalledWith({
+      from: 'whatsapp:+14155238886',
+      to: 'whatsapp:+50688888888',
+      body: 'Hola Juan Pérez, tu solicitud para el paquete 1Z999AA1 fue aprobada. Ya puedes rastrear tu paquete en nuestro sistema.',
+    })
+  })
+})
+
+describe('sendRequestRejected', () => {
+  beforeEach(() => {
+    mockCreate.mockClear()
+    mockCreate.mockResolvedValue({ sid: 'SM123' })
+    process.env.TWILIO_WHATSAPP_FROM = '+14155238886'
+  })
+
+  it('sends rejection message with reason', async () => {
+    await sendRequestRejected({
+      to: '+50688888888',
+      customerName: 'Juan Pérez',
+      trackingNumber: '1Z999AA1',
+      reason: 'La factura no es legible',
+    })
+
+    expect(mockCreate).toHaveBeenCalledWith({
+      from: 'whatsapp:+14155238886',
+      to: 'whatsapp:+50688888888',
+      body: 'Hola Juan Pérez, tu solicitud para el paquete 1Z999AA1 fue rechazada. Motivo: La factura no es legible.',
+    })
   })
 })
