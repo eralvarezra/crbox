@@ -53,4 +53,5 @@ export const packageRequests = pgTable('package_requests', {
   status: requestStatusEnum('status').notNull().default('pending'),
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
