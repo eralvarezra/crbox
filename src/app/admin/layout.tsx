@@ -37,7 +37,7 @@ export default async function AdminLayout({
           <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
             Admin
           </span>
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
         </div>
       </nav>
       <main className="max-w-5xl mx-auto py-8 px-4">{children}</main>

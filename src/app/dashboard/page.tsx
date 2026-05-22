@@ -21,7 +21,7 @@ export default async function DashboardPage() {
         <Link href="/" className="font-bold text-indigo-700">
           📦 CRBox
         </Link>
-        <UserButton afterSignOutUrl="/" />
+        <UserButton />
       </nav>
       <main className="max-w-3xl mx-auto py-10 px-4">
         <h1 className="text-xl font-bold mb-6">
