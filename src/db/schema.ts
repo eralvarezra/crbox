@@ -15,6 +15,12 @@ export const packageStatusEnum = pgEnum('package_status', [
   'delivered',
 ])
 
+export const requestStatusEnum = pgEnum('request_status', [
+  'pending',
+  'approved',
+  'rejected',
+])
+
 export const packages = pgTable('packages', {
   id: uuid('id').primaryKey().defaultRandom(),
   trackingNumber: varchar('tracking_number', { length: 100 }).notNull().unique(),
@@ -34,5 +40,17 @@ export const statusHistory = pgTable('status_history', {
     .references(() => packages.id, { onDelete: 'cascade' }),
   status: packageStatusEnum('status').notNull(),
   note: text('note'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const packageRequests = pgTable('package_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  trackingNumber: varchar('tracking_number', { length: 100 }).notNull(),
+  customerName: varchar('customer_name', { length: 200 }),
+  whatsappNumber: varchar('whatsapp_number', { length: 20 }).notNull(),
+  invoiceUrl: varchar('invoice_url', { length: 500 }).notNull(),
+  clerkUserId: varchar('clerk_user_id', { length: 200 }),
+  status: requestStatusEnum('status').notNull().default('pending'),
+  rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
