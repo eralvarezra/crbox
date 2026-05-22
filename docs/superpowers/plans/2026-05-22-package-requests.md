@@ -1,30 +1,30 @@
-# Package Request System — Implementation Plan
+# Package Request System Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Allow customers (logged-in or guest) to submit package tracking requests that admins review, approve, or reject — with automatic WhatsApp notifications on each decision.
+**Goal:** Allow customers (guest or logged-in) to submit a tracking number request with name, WhatsApp, and invoice image; admins review, approve (auto-creating the package), or reject (with reason); WhatsApp notification sent on both outcomes.
 
-**Architecture:** New `packageRequests` table in Neon stores submissions including a Vercel Blob URL for the invoice image. Three new Server Actions handle submission, approval (auto-creates the package), and rejection. The admin gets a dedicated `/admin/requests` section; the public gets a `/request` form.
+**Architecture:** New `packageRequests` table in Neon. Invoice images uploaded to Vercel Blob via Server Action. Public `/request` page for customers, `/admin/requests` list and `/admin/requests/[id]` detail for admins. Three Server Actions: `submitPackageRequest`, `approveRequest`, `rejectRequest`. Two new WhatsApp helpers reuse the existing `getClient()` pattern.
 
-**Tech Stack:** Next.js 15 App Router, Drizzle ORM, Neon PostgreSQL, Vercel Blob (`@vercel/blob`), Clerk v7, Twilio WhatsApp, Vitest
+**Tech Stack:** Next.js 15 App Router, Drizzle ORM + Neon, Clerk v7, Vercel Blob (`@vercel/blob`), Twilio WhatsApp, Tailwind CSS, Vitest.
 
 ---
 
 ## File Map
 
-| Action | Path |
-|---|---|
-| Modify | `src/db/schema.ts` |
-| Modify | `src/lib/whatsapp.ts` |
-| Modify | `src/lib/whatsapp.test.ts` |
-| Modify | `next.config.ts` |
-| **Create** | `src/lib/actions/requests.ts` |
-| **Create** | `src/components/request-form.tsx` |
-| **Create** | `src/app/request/page.tsx` |
-| **Create** | `src/app/admin/requests/page.tsx` |
-| **Create** | `src/app/admin/requests/[id]/page.tsx` |
-| Modify | `src/app/page.tsx` |
-| Modify | `src/app/admin/layout.tsx` |
+| File | Action | Responsibility |
+|---|---|---|
+| `src/db/schema.ts` | Modify | Add `requestStatusEnum` + `packageRequests` table |
+| `src/lib/whatsapp.ts` | Modify | Add `sendRequestApproved` + `sendRequestRejected` |
+| `src/lib/whatsapp.test.ts` | Modify | Tests for the two new WhatsApp helpers |
+| `next.config.ts` | Modify | Increase Server Action body size limit to 5 MB |
+| `src/lib/actions/requests.ts` | Create | `submitPackageRequest`, `approveRequest`, `rejectRequest` |
+| `src/components/request-form.tsx` | Create | Client component — public request form UI |
+| `src/app/request/page.tsx` | Create | Public server page — auth check, passes props to form |
+| `src/app/admin/requests/page.tsx` | Create | Admin list with status filter tabs |
+| `src/app/admin/requests/[id]/page.tsx` | Create | Admin detail — approve / reject UI |
+| `src/app/page.tsx` | Modify | Add "Registrar mi paquete" button |
+| `src/app/admin/layout.tsx` | Modify | Add "Solicitudes" nav link with pending badge |
 
 ---
 
@@ -33,9 +33,9 @@
 **Files:**
 - Modify: `src/db/schema.ts`
 
-- [ ] **Step 1: Add the enum and table**
+- [ ] **Step 1: Add the enum and table to `src/db/schema.ts`**
 
-Replace the contents of `src/db/schema.ts` with:
+Replace the entire file with:
 
 ```ts
 import {
@@ -102,13 +102,13 @@ export const packageRequests = pgTable('package_requests', {
 npm run db:push
 ```
 
-Expected: no errors, Neon confirms table `package_requests` and enum `request_status` created.
+Expected: Drizzle prints the new `request_status` enum and `package_requests` table, then `✓ Your schema is up to date!`
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add src/db/schema.ts
-git commit -m "feat: add packageRequests table and requestStatusEnum"
+git commit -m "feat: add packageRequests table and requestStatus enum to schema"
 ```
 
 ---
@@ -119,9 +119,9 @@ git commit -m "feat: add packageRequests table and requestStatusEnum"
 - Modify: `src/lib/whatsapp.ts`
 - Modify: `src/lib/whatsapp.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the failing tests first**
 
-Add to `src/lib/whatsapp.test.ts` (after the existing `describe` block):
+Add to the bottom of `src/lib/whatsapp.test.ts` (keep all existing tests, add below):
 
 ```ts
 import { sendRequestApproved, sendRequestRejected } from './whatsapp'
@@ -133,7 +133,7 @@ describe('sendRequestApproved', () => {
     process.env.TWILIO_WHATSAPP_FROM = '+14155238886'
   })
 
-  it('sends approval WhatsApp with tracking number', async () => {
+  it('sends approval message with tracking number', async () => {
     await sendRequestApproved({
       to: '+50688888888',
       customerName: 'Juan Pérez',
@@ -155,34 +155,34 @@ describe('sendRequestRejected', () => {
     process.env.TWILIO_WHATSAPP_FROM = '+14155238886'
   })
 
-  it('sends rejection WhatsApp with reason', async () => {
+  it('sends rejection message with reason', async () => {
     await sendRequestRejected({
       to: '+50688888888',
       customerName: 'Juan Pérez',
       trackingNumber: '1Z999AA1',
-      reason: 'Factura ilegible',
+      reason: 'La factura no es legible',
     })
 
     expect(mockCreate).toHaveBeenCalledWith({
       from: 'whatsapp:+14155238886',
       to: 'whatsapp:+50688888888',
-      body: 'Hola Juan Pérez, tu solicitud para el paquete 1Z999AA1 fue rechazada. Motivo: Factura ilegible.',
+      body: 'Hola Juan Pérez, tu solicitud para el paquete 1Z999AA1 fue rechazada. Motivo: La factura no es legible.',
     })
   })
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 2: Run tests — verify they fail**
 
 ```bash
 npm test
 ```
 
-Expected: `sendRequestApproved` and `sendRequestRejected` are not defined — FAIL.
+Expected: `sendRequestApproved` and `sendRequestRejected` fail with `is not a function`.
 
-- [ ] **Step 3: Implement the helpers**
+- [ ] **Step 3: Add the two functions to `src/lib/whatsapp.ts`**
 
-Add to the bottom of `src/lib/whatsapp.ts`:
+Append to the end of the file:
 
 ```ts
 export async function sendRequestApproved(params: {
@@ -215,13 +215,13 @@ export async function sendRequestRejected(params: {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Run tests — verify all pass**
 
 ```bash
 npm test
 ```
 
-Expected: all tests PASS.
+Expected: All tests pass including the 2 new ones.
 
 - [ ] **Step 5: Commit**
 
@@ -232,7 +232,7 @@ git commit -m "feat: add sendRequestApproved and sendRequestRejected WhatsApp he
 
 ---
 
-## Task 3: Install Vercel Blob and increase Server Action body limit
+## Task 3: Install Vercel Blob and increase body size limit
 
 **Files:**
 - Modify: `next.config.ts`
@@ -243,11 +243,9 @@ git commit -m "feat: add sendRequestApproved and sendRequestRejected WhatsApp he
 npm install @vercel/blob
 ```
 
-Expected: package added to `node_modules` and `package.json`.
+Expected: Package added to `node_modules`, `package.json` updated.
 
-- [ ] **Step 2: Add body size limit and add BLOB_READ_WRITE_TOKEN to .env.local**
-
-Replace `next.config.ts` with:
+- [ ] **Step 2: Update `next.config.ts`**
 
 ```ts
 import type { NextConfig } from 'next'
@@ -263,35 +261,37 @@ const nextConfig: NextConfig = {
 export default nextConfig
 ```
 
-Add this line to `.env.local` (get the token from the Vercel dashboard under Storage → Blob → your store → `.env.local`):
+- [ ] **Step 3: Add env var to `.env.local`**
+
+Open `.env.local` and add:
 
 ```
-BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
+BLOB_READ_WRITE_TOKEN=<get this from Vercel Dashboard → Storage → Blob → your store → .env.local tab>
 ```
 
-- [ ] **Step 3: Commit**
+Note: If Vercel Blob store doesn't exist yet, create one at vercel.com → your project → Storage → Create Blob Store, then copy the token.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add next.config.ts
-git commit -m "feat: increase server action body limit to 5mb for invoice uploads"
+git commit -m "feat: install @vercel/blob and increase server action body limit to 5mb"
 ```
 
 ---
 
-## Task 4: Server Action — submitPackageRequest
+## Task 4: Create `submitPackageRequest` Server Action
 
 **Files:**
 - Create: `src/lib/actions/requests.ts`
 
 - [ ] **Step 1: Create the file**
 
-Create `src/lib/actions/requests.ts`:
-
 ```ts
 'use server'
 
 import { db } from '@/db'
-import { packages, packageRequests, statusHistory } from '@/db/schema'
+import { packageRequests, packages, statusHistory } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
@@ -312,9 +312,8 @@ export async function submitPackageRequest(formData: FormData) {
   const whatsappNumber = formData.get('whatsappNumber')?.toString().trim()
   const invoiceFile = formData.get('invoice') as File
 
-  if (!trackingNumber) throw new Error('Tracking number is required')
-  if (!whatsappNumber) throw new Error('WhatsApp number is required')
-  if (!invoiceFile?.size) throw new Error('Invoice file is required')
+  if (!trackingNumber || !whatsappNumber) throw new Error('Faltan campos requeridos')
+  if (!invoiceFile || invoiceFile.size === 0) throw new Error('La factura es requerida')
 
   let customerName: string | null = null
 
@@ -324,14 +323,12 @@ export async function submitPackageRequest(formData: FormData) {
     customerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || null
   } else {
     customerName = formData.get('customerName')?.toString().trim() || null
-    if (!customerName) throw new Error('Name is required')
+    if (!customerName) throw new Error('El nombre es requerido')
   }
 
-  const blob = await put(
-    `invoices/${Date.now()}-${invoiceFile.name}`,
-    invoiceFile,
-    { access: 'public' }
-  )
+  const blob = await put(`invoices/${Date.now()}-${invoiceFile.name}`, invoiceFile, {
+    access: 'public',
+  })
 
   await db.insert(packageRequests).values({
     trackingNumber,
@@ -346,7 +343,15 @@ export async function submitPackageRequest(formData: FormData) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Verify the app compiles**
+
+```bash
+npm run build
+```
+
+Expected: Build succeeds (or only pre-existing warnings). Fix any TypeScript errors before continuing.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add src/lib/actions/requests.ts
@@ -355,14 +360,14 @@ git commit -m "feat: add submitPackageRequest server action with Vercel Blob upl
 
 ---
 
-## Task 5: Server Actions — approveRequest and rejectRequest
+## Task 5: Add `approveRequest` and `rejectRequest` Server Actions
 
 **Files:**
 - Modify: `src/lib/actions/requests.ts`
 
-- [ ] **Step 1: Add approveRequest and rejectRequest**
+- [ ] **Step 1: Append both actions to `src/lib/actions/requests.ts`**
 
-Append to `src/lib/actions/requests.ts`:
+Add at the bottom of the file:
 
 ```ts
 export async function approveRequest(requestId: string, _formData: FormData) {
@@ -371,7 +376,7 @@ export async function approveRequest(requestId: string, _formData: FormData) {
   const request = await db.query.packageRequests.findFirst({
     where: eq(packageRequests.id, requestId),
   })
-  if (!request) throw new Error('Request not found')
+  if (!request) throw new Error('Solicitud no encontrada')
 
   const existing = await db.query.packages.findFirst({
     where: eq(packages.trackingNumber, request.trackingNumber),
@@ -422,12 +427,12 @@ export async function rejectRequest(requestId: string, formData: FormData) {
   await requireAdmin()
 
   const reason = formData.get('reason')?.toString().trim()
-  if (!reason) throw new Error('Rejection reason is required')
+  if (!reason) throw new Error('El motivo de rechazo es requerido')
 
   const request = await db.query.packageRequests.findFirst({
     where: eq(packageRequests.id, requestId),
   })
-  if (!request) throw new Error('Request not found')
+  if (!request) throw new Error('Solicitud no encontrada')
 
   const customerName = request.customerName ?? 'Cliente'
 
@@ -452,7 +457,15 @@ export async function rejectRequest(requestId: string, formData: FormData) {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Verify the app compiles**
+
+```bash
+npm run build
+```
+
+Expected: Build succeeds. Fix any TypeScript errors before continuing.
+
+- [ ] **Step 3: Commit**
 
 ```bash
 git add src/lib/actions/requests.ts
@@ -467,16 +480,14 @@ git commit -m "feat: add approveRequest and rejectRequest server actions"
 - Create: `src/components/request-form.tsx`
 - Create: `src/app/request/page.tsx`
 
-- [ ] **Step 1: Create the client form component**
-
-Create `src/components/request-form.tsx`:
+- [ ] **Step 1: Create `src/components/request-form.tsx`**
 
 ```tsx
 'use client'
 
+import { useState } from 'react'
 import { submitPackageRequest } from '@/lib/actions/requests'
 import PhoneInput from '@/components/phone-input'
-import { useState } from 'react'
 
 export default function RequestForm({
   isLoggedIn,
@@ -570,9 +581,7 @@ export default function RequestForm({
 }
 ```
 
-- [ ] **Step 2: Create the page**
-
-Create `src/app/request/page.tsx`:
+- [ ] **Step 2: Create `src/app/request/page.tsx`**
 
 ```tsx
 import { auth, clerkClient } from '@clerk/nextjs/server'
@@ -597,16 +606,20 @@ export default async function RequestPage({
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="flex flex-col items-center py-16 px-4">
+      <main className="flex flex-col items-center justify-center py-16 px-4">
         <div className="w-full max-w-lg">
-          <h1 className="text-2xl font-bold mb-2 text-center">Registrar mi paquete</h1>
-          <p className="text-sm text-gray-500 text-center mb-6">
-            Envía tu tracking number y factura. El admin revisará tu solicitud y te notificará por WhatsApp.
+          <h1 className="text-2xl font-bold mb-2 text-center text-gray-900">
+            Registrar mi paquete
+          </h1>
+          <p className="text-sm text-gray-500 text-center mb-8">
+            Envía tu tracking number y factura para que podamos agregar tu paquete al sistema.
           </p>
           {success ? (
             <div className="bg-green-50 border border-green-200 rounded-xl px-6 py-10 text-center">
               <p className="text-green-800 font-semibold text-lg mb-1">¡Solicitud enviada!</p>
-              <p className="text-green-700 text-sm">Te notificaremos por WhatsApp cuando sea revisada.</p>
+              <p className="text-green-700 text-sm">
+                Revisaremos tu información y te notificaremos por WhatsApp.
+              </p>
             </div>
           ) : (
             <RequestForm isLoggedIn={!!userId} userName={userName} />
@@ -618,11 +631,19 @@ export default async function RequestPage({
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Verify manually**
+
+Start the dev server (`npm run dev`) and visit `http://localhost:3000/request`. Confirm:
+- Guest view shows the name field
+- Log in with a Clerk account and revisit — name field should be gone, replaced by "Enviando como [name]"
+- Selecting an image shows the preview
+- Stop the server when done
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/components/request-form.tsx src/app/request/page.tsx
-git commit -m "feat: add public package request form"
+git commit -m "feat: add public package request form page"
 ```
 
 ---
@@ -632,9 +653,7 @@ git commit -m "feat: add public package request form"
 **Files:**
 - Create: `src/app/admin/requests/page.tsx`
 
-- [ ] **Step 1: Create the page**
-
-Create `src/app/admin/requests/page.tsx`:
+- [ ] **Step 1: Create `src/app/admin/requests/page.tsx`**
 
 ```tsx
 import { db } from '@/db'
@@ -661,7 +680,7 @@ const FILTER_OPTIONS: [string, string][] = [
   ['rejected', 'Rechazadas'],
 ]
 
-export default async function AdminRequestsPage({
+export default async function RequestsPage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string }>
@@ -673,8 +692,9 @@ export default async function AdminRequestsPage({
     .from(packageRequests)
     .orderBy(desc(packageRequests.createdAt))
 
+  const validStatus = ['pending', 'approved', 'rejected']
   const filtered =
-    status && ['pending', 'approved', 'rejected'].includes(status)
+    status && validStatus.includes(status)
       ? allRequests.filter(r => r.status === status)
       : allRequests
 
@@ -700,9 +720,7 @@ export default async function AdminRequestsPage({
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {filtered.length === 0 ? (
-          <p className="text-sm text-gray-400 px-6 py-10 text-center">
-            No hay solicitudes.
-          </p>
+          <p className="text-sm text-gray-400 px-6 py-10 text-center">No hay solicitudes.</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b bg-gray-50">
@@ -726,7 +744,7 @@ export default async function AdminRequestsPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3">{req.customerName ?? '—'}</td>
-                  <td className="px-4 py-3">{req.whatsappNumber}</td>
+                  <td className="px-4 py-3 text-gray-500">{req.whatsappNumber}</td>
                   <td className="px-4 py-3 text-gray-500">
                     {req.createdAt.toLocaleDateString('es-CR')}
                   </td>
@@ -762,9 +780,7 @@ git commit -m "feat: add admin requests list page with status filter"
 **Files:**
 - Create: `src/app/admin/requests/[id]/page.tsx`
 
-- [ ] **Step 1: Create the page**
-
-Create `src/app/admin/requests/[id]/page.tsx`:
+- [ ] **Step 1: Create `src/app/admin/requests/[id]/page.tsx`**
 
 ```tsx
 import { db } from '@/db'
@@ -804,7 +820,8 @@ export default async function RequestDetailPage({
   const approveWithId = approveRequest.bind(null, request.id)
   const rejectWithId = rejectRequest.bind(null, request.id)
 
-  const isImage = !request.invoiceUrl.toLowerCase().endsWith('.pdf')
+  const isPdf = request.invoiceUrl.toLowerCase().includes('.pdf') ||
+    request.invoiceUrl.toLowerCase().includes('pdf')
 
   return (
     <>
@@ -816,13 +833,13 @@ export default async function RequestDetailPage({
 
       {whatsapp_error && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-4 text-sm text-yellow-800">
-          Acción completada, pero la notificación por WhatsApp no se pudo enviar. Verifica que el número haya enviado un mensaje al sandbox recientemente.
+          Acción completada, pero la notificación por WhatsApp no se pudo enviar. Verifica que el número haya enviado un mensaje al sandbox de Twilio en las últimas 24 horas.
         </div>
       )}
 
       {duplicate && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4 text-sm text-red-800">
-          El tracking number <strong>{request.trackingNumber}</strong> ya existe en el sistema. Rechaza la solicitud o contáctate con el cliente.
+          El tracking number <strong>{request.trackingNumber}</strong> ya existe en el sistema. Rechaza esta solicitud o elimina el paquete duplicado.
         </div>
       )}
 
@@ -897,20 +914,25 @@ export default async function RequestDetailPage({
 
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Factura</h2>
-          <a href={request.invoiceUrl} target="_blank" rel="noopener noreferrer">
-            {isImage ? (
+          {isPdf ? (
+            <a
+              href={request.invoiceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg p-8 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors"
+            >
+              Ver PDF de factura
+            </a>
+          ) : (
+            <a href={request.invoiceUrl} target="_blank" rel="noopener noreferrer">
               <img
                 src={request.invoiceUrl}
                 alt="Factura"
                 className="rounded-lg border max-w-full hover:opacity-90 transition-opacity cursor-zoom-in"
               />
-            ) : (
-              <div className="border rounded-lg px-4 py-8 text-center text-sm text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer">
-                Ver PDF de factura
-              </div>
-            )}
-          </a>
-          <p className="text-xs text-gray-400 mt-2 text-center">Clic para abrir</p>
+            </a>
+          )}
+          <p className="text-xs text-gray-400 mt-2 text-center">Clic para ver completa</p>
         </div>
       </div>
     </>
@@ -921,8 +943,8 @@ export default async function RequestDetailPage({
 - [ ] **Step 2: Commit**
 
 ```bash
-git add "src/app/admin/requests/[id]/page.tsx"
-git commit -m "feat: add admin request detail page with approve/reject actions"
+git add src/app/admin/requests/[id]/page.tsx
+git commit -m "feat: add admin request detail page with approve and reject actions"
 ```
 
 ---
@@ -933,9 +955,9 @@ git commit -m "feat: add admin request detail page with approve/reject actions"
 - Modify: `src/app/page.tsx`
 - Modify: `src/app/admin/layout.tsx`
 
-- [ ] **Step 1: Add "Registrar mi paquete" button to home page**
+- [ ] **Step 1: Add "Registrar mi paquete" button to `src/app/page.tsx`**
 
-Replace `src/app/page.tsx` with:
+Replace the entire file:
 
 ```tsx
 import { PackageSearchForm } from '@/components/package-search-form'
@@ -956,11 +978,11 @@ export default function HomePage() {
         </p>
         <PackageSearchForm />
         <SignInPrompt />
-        <div className="mt-8 text-center">
-          <p className="text-xs text-gray-400 mb-2">¿Tienes un paquete nuevo?</p>
+        <div className="mt-10 border-t pt-8 text-center">
+          <p className="text-sm text-gray-500 mb-3">¿Tienes un paquete que aún no está en el sistema?</p>
           <Link
             href="/request"
-            className="inline-block bg-white border border-indigo-300 text-indigo-600 text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-indigo-50 transition-colors"
+            className="inline-block bg-white border border-indigo-300 text-indigo-600 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-50 transition-colors"
           >
             Registrar mi paquete
           </Link>
@@ -971,9 +993,9 @@ export default function HomePage() {
 }
 ```
 
-- [ ] **Step 2: Add "Solicitudes" link with pending badge to admin layout**
+- [ ] **Step 2: Add "Solicitudes" link with pending badge to `src/app/admin/layout.tsx`**
 
-Replace `src/app/admin/layout.tsx` with:
+Replace the entire file:
 
 ```tsx
 import { auth } from '@clerk/nextjs/server'
@@ -982,7 +1004,7 @@ import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import { db } from '@/db'
 import { packageRequests } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, count } from 'drizzle-orm'
 
 export default async function AdminLayout({
   children,
@@ -994,12 +1016,10 @@ export default async function AdminLayout({
     redirect('/')
   }
 
-  const pendingRequests = await db
-    .select({ id: packageRequests.id })
+  const [{ value: pendingCount }] = await db
+    .select({ value: count() })
     .from(packageRequests)
     .where(eq(packageRequests.status, 'pending'))
-
-  const pendingCount = pendingRequests.length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1036,18 +1056,21 @@ export default async function AdminLayout({
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Verify end-to-end manually**
+
+Start the dev server (`npm run dev`) and test the full flow:
+1. Visit `http://localhost:3000` — confirm "Registrar mi paquete" button appears at the bottom
+2. Click it — confirm the request form loads
+3. Submit a request (use a real image file)
+4. Log into admin — confirm "Solicitudes" appears in the nav with a red badge showing `1`
+5. Click "Solicitudes" — confirm the request appears in the list as "Pendiente"
+6. Click the tracking number — confirm the detail page shows all fields and the invoice image
+7. Approve the request — confirm the package appears in `/admin`, the request shows "Aprobado"
+8. Create another request and reject it with a reason — confirm it shows "Rechazado" with the reason
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/app/page.tsx src/app/admin/layout.tsx
-git commit -m "feat: add request nav link with pending badge and home CTA button"
+git commit -m "feat: add Registrar mi paquete button and Solicitudes nav link with pending badge"
 ```
-
----
-
-## Done
-
-After Task 9 the full feature is live:
-- `/request` — public form for customers
-- `/admin/requests` — list with status filter and pending badge
-- `/admin/requests/[id]` — detail with approve / reject + WhatsApp notifications
