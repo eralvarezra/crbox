@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash *)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npx create-next-app@15 . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npx create-next-app@15 . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --yes --name crbox)",
+      "Read(//c/Users/Erick/Desktop/**)",
+      "Bash(npx create-next-app@15 crbox-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --yes)",
+      "Bash(npm install *)",
+      "PowerShell(New-Item *)",
+      "Bash(npm run *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
