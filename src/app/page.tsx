@@ -1,6 +1,6 @@
 import { PackageSearchForm } from '@/components/package-search-form'
 import { NavBar } from '@/components/nav-bar'
-import Link from 'next/link'
+import { SignInPrompt } from '@/components/sign-in-prompt'
 
 export default function HomePage() {
   return (
@@ -14,13 +14,7 @@ export default function HomePage() {
           Ingresa tu número de tracking para ver el estado de tu envío de USA a Costa Rica
         </p>
         <PackageSearchForm />
-        <p className="text-xs text-gray-400 mt-5">
-          ¿Tienes cuenta?{' '}
-          <Link href="/sign-in" className="text-indigo-500 hover:underline">
-            Inicia sesión
-          </Link>{' '}
-          para ver todos tus paquetes
-        </p>
+        <SignInPrompt />
       </main>
     </div>
   )
