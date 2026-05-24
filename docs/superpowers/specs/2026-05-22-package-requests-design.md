@@ -69,6 +69,7 @@ Invoice images are uploaded to **Vercel Blob** before form submission. The resul
 
 ### `approveRequest(requestId)`
 - Requires admin role
+- If the tracking number already exists in `packages`, redirect back to the request detail with `?duplicate=1` and show an error — do not approve
 - Inserts into `packages`: tracking number, customer name (from request or Clerk), WhatsApp, clerkUserId
 - Inserts initial `statusHistory` entry with `received_usa`
 - Updates `packageRequests.status` to `approved`

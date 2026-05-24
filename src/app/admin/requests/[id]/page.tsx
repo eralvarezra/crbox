@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { approveRequest, rejectRequest } from '@/lib/actions/requests'
+import { ApproveRequestButton } from '@/components/approve-request-button'
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -34,6 +35,8 @@ export default async function RequestDetailPage({
 
   const approveWithId = approveRequest.bind(null, request.id)
   const rejectWithId = rejectRequest.bind(null, request.id)
+
+  const invoiceViewUrl = `/api/admin/invoice?url=${encodeURIComponent(request.invoiceUrl)}`
 
   const isPdf =
     request.invoiceUrl.toLowerCase().includes('.pdf') ||
@@ -105,14 +108,7 @@ export default async function RequestDetailPage({
 
           {request.status === 'pending' && (
             <div className="pt-2 space-y-3 border-t">
-              <form action={approveWithId}>
-                <button
-                  type="submit"
-                  className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                >
-                  Aprobar solicitud
-                </button>
-              </form>
+              <ApproveRequestButton action={approveWithId} />
 
               <form action={rejectWithId} className="space-y-2">
                 <input
@@ -136,7 +132,7 @@ export default async function RequestDetailPage({
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Factura</h2>
           {isPdf ? (
             <a
-              href={request.invoiceUrl}
+              href={invoiceViewUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg p-8 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors"
@@ -144,9 +140,9 @@ export default async function RequestDetailPage({
               Ver PDF de factura
             </a>
           ) : (
-            <a href={request.invoiceUrl} target="_blank" rel="noopener noreferrer">
+            <a href={invoiceViewUrl} target="_blank" rel="noopener noreferrer">
               <img
-                src={request.invoiceUrl}
+                src={invoiceViewUrl}
                 alt="Factura"
                 className="rounded-lg border max-w-full hover:opacity-90 transition-opacity cursor-zoom-in"
               />

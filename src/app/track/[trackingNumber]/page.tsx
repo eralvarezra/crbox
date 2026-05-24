@@ -1,5 +1,5 @@
 import { db } from '@/db'
-import { packages, statusHistory } from '@/db/schema'
+import { packages, packageRequests, statusHistory } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { auth } from '@clerk/nextjs/server'
@@ -14,12 +14,45 @@ export default async function TrackPage({
   params: Promise<{ trackingNumber: string }>
 }) {
   const { trackingNumber } = await params
+  const normalizedTracking = trackingNumber.toUpperCase()
 
   const pkg = await db.query.packages.findFirst({
-    where: eq(packages.trackingNumber, trackingNumber.toUpperCase()),
+    where: eq(packages.trackingNumber, normalizedTracking),
   })
 
-  if (!pkg) notFound()
+  if (!pkg) {
+    const pendingRequest = await db.query.packageRequests.findFirst({
+      where: eq(packageRequests.trackingNumber, normalizedTracking),
+      columns: { status: true, trackingNumber: true },
+    })
+
+    if (pendingRequest?.status === 'pending') {
+      return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+          <p className="text-5xl mb-4">⏳</p>
+          <h1 className="text-xl font-bold mb-2 text-gray-800">Tu solicitud está en revisión</h1>
+          <p className="text-gray-500 text-sm mb-2 text-center max-w-sm">
+            Recibimos tu tracking{' '}
+            <span className="font-mono font-semibold text-gray-700">
+              {pendingRequest.trackingNumber}
+            </span>{' '}
+            y un administrador lo está verificando.
+          </p>
+          <p className="text-gray-400 text-sm mb-8 text-center max-w-sm">
+            Te notificaremos por WhatsApp en cuanto esté registrado en el sistema.
+          </p>
+          <Link
+            href="/"
+            className="text-sm bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Volver al inicio
+          </Link>
+        </div>
+      )
+    }
+
+    notFound()
+  }
 
   const history = await db
     .select()

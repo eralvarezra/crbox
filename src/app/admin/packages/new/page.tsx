@@ -1,6 +1,18 @@
 import { createPackage } from '@/lib/actions/packages'
+import { clerkClient } from '@clerk/nextjs/server'
+import PhoneInput from '@/components/phone-input'
+import UserSearch from '@/components/user-search'
 
-export default function NewPackagePage() {
+export default async function NewPackagePage() {
+  const client = await clerkClient()
+  const { data: clerkUsers } = await client.users.getUserList({ limit: 100 })
+
+  const users = clerkUsers.map(u => ({
+    id: u.id,
+    name: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || u.id,
+    email: u.emailAddresses[0]?.emailAddress ?? '',
+  }))
+
   return (
     <>
       <h1 className="text-xl font-bold mb-6">Nuevo paquete</h1>
@@ -41,24 +53,13 @@ export default function NewPackagePage() {
           <label className="text-xs uppercase text-gray-500 tracking-wide block mb-1.5">
             WhatsApp (opcional)
           </label>
-          <input
-            name="whatsappNumber"
-            className="w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="+50688888888"
-          />
-          <p className="text-xs text-gray-400 mt-1">
-            Formato internacional: +506 para Costa Rica
-          </p>
+          <PhoneInput />
         </div>
         <div>
           <label className="text-xs uppercase text-gray-500 tracking-wide block mb-1.5">
-            Clerk User ID (opcional)
+            Vincular usuario (opcional)
           </label>
-          <input
-            name="clerkUserId"
-            className="w-full border rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="user_2abc..."
-          />
+          <UserSearch users={users} />
           <p className="text-xs text-gray-400 mt-1">
             Vincula este paquete a una cuenta registrada
           </p>

@@ -42,7 +42,7 @@ export async function submitPackageRequest(formData: FormData) {
   }
 
   const blob = await put(`invoices/${Date.now()}-${invoiceFile.name}`, invoiceFile, {
-    access: 'public',
+    access: 'private',
   })
 
   await db.insert(packageRequests).values({

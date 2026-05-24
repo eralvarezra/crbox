@@ -7,10 +7,13 @@ import { StatusBadge } from '@/components/status-badge'
 
 export default async function EditPackagePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ whatsapp_error?: string }>
 }) {
   const { id } = await params
+  const { whatsapp_error } = await searchParams
 
   const pkg = await db.query.packages.findFirst({
     where: eq(packages.id, id),
@@ -29,6 +32,11 @@ export default async function EditPackagePage({
 
   return (
     <>
+      {whatsapp_error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-4 text-sm text-yellow-800">
+          Estado actualizado correctamente, pero la notificación por WhatsApp no se pudo enviar. Asegúrate de que el número haya enviado un mensaje al sandbox de Twilio en las últimas 24 horas.
+        </div>
+      )}
       <h1 className="text-xl font-bold mb-1">Editar paquete</h1>
       <p className="font-mono text-sm text-gray-500 mb-6">{pkg.trackingNumber}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -8,7 +8,9 @@ export function NavBar() {
 
   return (
     <nav className="bg-white border-b px-6 py-3 flex justify-between items-center">
-      <span className="font-bold text-lg text-indigo-700">📦 CRBox</span>
+      <Link href="/" className="font-bold text-lg text-indigo-700 hover:opacity-80 transition-opacity">
+        📦 CRBox
+      </Link>
       <div className="flex items-center gap-4">
         {isSignedIn ? (
           <>

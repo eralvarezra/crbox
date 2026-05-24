@@ -79,6 +79,7 @@ export async function updatePackageStatus(packageId: string, formData: FormData)
       })
     } catch (err) {
       console.error('WhatsApp notification failed:', err)
+      redirect(`/admin/packages/${packageId}?whatsapp_error=1`)
     }
   }
 
