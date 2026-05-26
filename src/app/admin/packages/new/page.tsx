@@ -30,22 +30,6 @@ export default async function NewPackagePage() {
         </div>
         <div>
           <label className="text-xs uppercase text-gray-500 tracking-wide block mb-1.5">
-            Carrier *
-          </label>
-          <select
-            name="carrier"
-            required
-            className="w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          >
-            <option value="">Selecciona un carrier</option>
-            <option value="ups">UPS</option>
-            <option value="fedex">FedEx</option>
-            <option value="usps">USPS</option>
-            <option value="dhl">DHL</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs uppercase text-gray-500 tracking-wide block mb-1.5">
             Nombre del cliente *
           </label>
           <input
