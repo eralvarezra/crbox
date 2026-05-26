@@ -37,12 +37,13 @@ export function PackageSearchForm() {
             className="flex-1 border-0 outline-none bg-transparent font-mono text-[14.5px] font-medium text-[#0A0A0A] tracking-[0.01em] placeholder:text-[#A3A3A3]"
             autoComplete="off"
             spellCheck={false}
+            required
           />
           {value && (
             <button
               type="button"
               onClick={() => setValue('')}
-              aria-label="✕"
+              aria-label="Limpiar búsqueda"
               className="border-0 bg-transparent text-[#A3A3A3] cursor-pointer p-1 hover:text-[#525252] transition-colors leading-none"
             >
               ✕
