@@ -7,6 +7,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { put } from '@vercel/blob'
 import { sendRequestApproved, sendRequestRejected } from '@/lib/whatsapp'
+import { registerTracking, getTrackingStatus } from '@/lib/track17'
 
 async function requireAdmin() {
   const { sessionClaims } = await auth()
@@ -101,6 +102,17 @@ export async function approveRequest(requestId: string, formData: FormData) {
     status: 'received_usa',
     note: null,
   })
+
+  try {
+    await registerTracking(request.trackingNumber)
+    const trackResult = await getTrackingStatus(request.trackingNumber)
+    await db
+      .update(packages)
+      .set({ carrierRawStatus: trackResult.rawStatus, carrierLastSynced: new Date() })
+      .where(eq(packages.id, pkg.id))
+  } catch (err) {
+    console.error('17track sync failed for approved request:', err)
+  }
 
   await db
     .update(packageRequests)

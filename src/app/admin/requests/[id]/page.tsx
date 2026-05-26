@@ -115,22 +115,6 @@ export default async function RequestDetailPage({
           {request.status === 'pending' && (
             <div className="pt-2 space-y-3 border-t">
               <form action={approveWithId} className="space-y-3">
-                <div>
-                  <label className="text-xs uppercase text-gray-500 tracking-wide block mb-1.5">
-                    Carrier *
-                  </label>
-                  <select
-                    name="carrier"
-                    required
-                    className="w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                  >
-                    <option value="">Selecciona un carrier</option>
-                    <option value="ups">UPS</option>
-                    <option value="fedex">FedEx</option>
-                    <option value="usps">USPS</option>
-                    <option value="dhl">DHL</option>
-                  </select>
-                </div>
                 <button
                   type="submit"
                   className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
