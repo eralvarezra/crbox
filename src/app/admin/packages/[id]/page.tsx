@@ -2,10 +2,8 @@ import { db } from '@/db'
 import { packages, statusHistory } from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { updatePackageStatus, syncPackageCarrier } from '@/lib/actions/packages'
+import { updatePackageStatus, syncPackageTracking } from '@/lib/actions/packages'
 import { StatusBadge } from '@/components/status-badge'
-import { CARRIER_LABELS } from '@/lib/carriers'
-import type { Carrier } from '@/lib/carriers'
 
 export default async function EditPackagePage({
   params,
@@ -31,7 +29,7 @@ export default async function EditPackagePage({
     .limit(5)
 
   const updateWithId = updatePackageStatus.bind(null, pkg.id)
-  const syncWithId = syncPackageCarrier.bind(null, pkg.id)
+  const syncWithId = syncPackageTracking.bind(null, pkg.id)
 
   return (
     <>
@@ -83,20 +81,13 @@ export default async function EditPackagePage({
             {pkg.whatsappNumber ? '💬 Guardar y notificar por WhatsApp' : 'Guardar cambios'}
           </button>
         </form>
-        {pkg.carrier && (
+        {pkg.carrierRawStatus && (
           <div className="bg-white rounded-xl shadow-sm p-6 space-y-3 md:col-span-2">
             <div className="text-sm font-semibold text-gray-700 mb-2">
-              Tracking del carrier
+              Tracking 17track
             </div>
             <div className="flex items-center gap-4 text-sm">
-              <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs font-semibold uppercase">
-                {CARRIER_LABELS[pkg.carrier as Carrier]}
-              </span>
-              <span className="text-gray-700">
-                {pkg.carrierRawStatus
-                  ? pkg.carrierRawStatus
-                  : <span className="text-gray-400 italic">Sin datos</span>}
-              </span>
+              <span className="text-gray-700">{pkg.carrierRawStatus}</span>
             </div>
             {pkg.carrierLastSynced && (
               <p className="text-xs text-gray-400">

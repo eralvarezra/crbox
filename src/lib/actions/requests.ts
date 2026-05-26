@@ -7,8 +7,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { put } from '@vercel/blob'
 import { sendRequestApproved, sendRequestRejected } from '@/lib/whatsapp'
-import { getCarrierStatus } from '@/lib/carriers'
-import type { Carrier } from '@/lib/carriers'
+import { registerTracking, getTrackingStatus } from '@/lib/track17'
 
 async function requireAdmin() {
   const { sessionClaims } = await auth()
@@ -77,7 +76,6 @@ export async function approveRequest(requestId: string, formData: FormData) {
   }
 
   const customerName = request.customerName ?? 'Cliente'
-  const carrier = (formData.get('carrier') as string)?.trim() || null
 
   let pkg: typeof packages.$inferSelect
   try {
@@ -88,7 +86,6 @@ export async function approveRequest(requestId: string, formData: FormData) {
         customerName,
         whatsappNumber: request.whatsappNumber,
         clerkUserId: request.clerkUserId,
-        carrier: carrier as Carrier | null,
       })
       .returning()
     pkg = inserted
@@ -106,14 +103,15 @@ export async function approveRequest(requestId: string, formData: FormData) {
     note: null,
   })
 
-  if (carrier) {
-    const result = await getCarrierStatus(carrier as Carrier, request.trackingNumber).catch(() => null)
-    if (result) {
-      await db
-        .update(packages)
-        .set({ carrierRawStatus: result.rawStatus, carrierLastSynced: new Date() })
-        .where(eq(packages.id, pkg.id))
-    }
+  try {
+    await registerTracking(request.trackingNumber)
+    const trackResult = await getTrackingStatus(request.trackingNumber)
+    await db
+      .update(packages)
+      .set({ carrierRawStatus: trackResult.rawStatus, carrierLastSynced: new Date() })
+      .where(eq(packages.id, pkg.id))
+  } catch (err) {
+    console.error('17track sync failed for approved request:', err)
   }
 
   await db
