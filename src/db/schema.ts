@@ -21,6 +21,8 @@ export const requestStatusEnum = pgEnum('request_status', [
   'rejected',
 ])
 
+export const carrierEnum = pgEnum('carrier', ['ups', 'fedex', 'usps', 'dhl'])
+
 export const packages = pgTable('packages', {
   id: uuid('id').primaryKey().defaultRandom(),
   trackingNumber: varchar('tracking_number', { length: 100 }).notNull().unique(),
@@ -29,6 +31,9 @@ export const packages = pgTable('packages', {
   customerName: varchar('customer_name', { length: 200 }).notNull(),
   whatsappNumber: varchar('whatsapp_number', { length: 20 }),
   clerkUserId: varchar('clerk_user_id', { length: 200 }),
+  carrier: carrierEnum('carrier'),
+  carrierRawStatus: text('carrier_raw_status'),
+  carrierLastSynced: timestamp('carrier_last_synced'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
