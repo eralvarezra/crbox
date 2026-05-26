@@ -3,6 +3,7 @@ import { packages } from '@/db/schema'
 import { desc } from 'drizzle-orm'
 import { StatusBadge } from '@/components/status-badge'
 import Link from 'next/link'
+import { CARRIER_LABELS } from '@/lib/carriers'
 
 export default async function AdminPage() {
   const allPackages = await db
@@ -30,6 +31,7 @@ export default async function AdminPage() {
               <th className="text-left px-5 py-3">Tracking</th>
               <th className="text-left px-5 py-3">Cliente</th>
               <th className="text-left px-5 py-3">Estado</th>
+              <th className="text-left px-5 py-3">Carrier</th>
               <th className="text-left px-5 py-3">Actualizado</th>
               <th className="px-5 py-3" />
             </tr>
@@ -37,7 +39,7 @@ export default async function AdminPage() {
           <tbody>
             {allPackages.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-gray-400 text-sm">
+                <td colSpan={6} className="px-5 py-10 text-center text-gray-400 text-sm">
                   No hay paquetes registrados todavía.
                 </td>
               </tr>
@@ -50,6 +52,9 @@ export default async function AdminPage() {
                 <td className="px-5 py-3">{pkg.customerName}</td>
                 <td className="px-5 py-3">
                   <StatusBadge status={pkg.status} />
+                </td>
+                <td className="px-5 py-3 text-xs text-gray-500">
+                  {pkg.carrier ? CARRIER_LABELS[pkg.carrier] : '—'}
                 </td>
                 <td className="px-5 py-3 text-gray-500 text-xs">
                   {pkg.updatedAt.toLocaleDateString('es-CR')}
