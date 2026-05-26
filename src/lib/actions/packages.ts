@@ -9,8 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { sendStatusUpdate } from '@/lib/whatsapp'
 import { STATUS_ORDER } from '@/lib/status'
 import type { PackageStatus } from '@/lib/status'
-import { getCarrierStatus } from '@/lib/carriers'
-import type { Carrier } from '@/lib/carriers'
+import { registerTracking, getTrackingStatus } from '@/lib/track17'
 
 async function requireAdmin() {
   const { sessionClaims } = await auth()
@@ -29,18 +28,12 @@ export async function createPackage(formData: FormData) {
   const description = (formData.get('description') as string)?.trim() || null
   const whatsappNumber = (formData.get('whatsappNumber') as string)?.trim() || null
   const clerkUserId = (formData.get('clerkUserId') as string)?.trim() || null
-  const carrier = (formData.get('carrier') as string)?.trim() || null
-
-  const VALID_CARRIERS = ['ups', 'fedex', 'usps', 'dhl'] as const
-  if (carrier && !VALID_CARRIERS.includes(carrier as typeof VALID_CARRIERS[number])) {
-    throw new Error('Invalid carrier value')
-  }
 
   let pkg: typeof packages.$inferSelect
   try {
     const [inserted] = await db
       .insert(packages)
-      .values({ trackingNumber, customerName, description, whatsappNumber, clerkUserId, carrier: carrier as Carrier | null })
+      .values({ trackingNumber, customerName, description, whatsappNumber, clerkUserId })
       .returning()
 
     await db.insert(statusHistory).values({
@@ -58,17 +51,15 @@ export async function createPackage(formData: FormData) {
     throw err
   }
 
-  if (carrier) {
-    const result = await getCarrierStatus(carrier as Carrier, trackingNumber).catch(() => null)
-    if (result) {
-      await db
-        .update(packages)
-        .set({
-          carrierRawStatus: result.rawStatus,
-          carrierLastSynced: new Date(),
-        })
-        .where(eq(packages.id, pkg.id))
-    }
+  try {
+    await registerTracking(trackingNumber)
+    const result = await getTrackingStatus(trackingNumber)
+    await db
+      .update(packages)
+      .set({ carrierRawStatus: result.rawStatus, carrierLastSynced: new Date() })
+      .where(eq(packages.id, pkg.id))
+  } catch (err) {
+    console.error('17track sync failed for new package:', err)
   }
 
   redirect('/admin')
@@ -130,17 +121,17 @@ export async function linkPackageToUser(trackingNumber: string) {
   revalidatePath('/dashboard')
 }
 
-export async function syncPackageCarrier(packageId: string) {
+export async function syncPackageTracking(packageId: string) {
   await requireAdmin()
 
   const pkg = await db.query.packages.findFirst({
     where: eq(packages.id, packageId),
-    columns: { carrier: true, trackingNumber: true },
+    columns: { trackingNumber: true },
   })
 
-  if (!pkg?.carrier) throw new Error('Package has no carrier assigned')
+  if (!pkg) throw new Error('Package not found')
 
-  const result = await getCarrierStatus(pkg.carrier as Carrier, pkg.trackingNumber).catch(() => null)
+  const result = await getTrackingStatus(pkg.trackingNumber).catch(() => null)
 
   if (result) {
     await db

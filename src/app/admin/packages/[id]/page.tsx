@@ -2,7 +2,7 @@ import { db } from '@/db'
 import { packages, statusHistory } from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { updatePackageStatus, syncPackageCarrier } from '@/lib/actions/packages'
+import { updatePackageStatus, syncPackageTracking } from '@/lib/actions/packages'
 import { StatusBadge } from '@/components/status-badge'
 import { CARRIER_LABELS } from '@/lib/carriers'
 import type { Carrier } from '@/lib/carriers'
@@ -31,7 +31,7 @@ export default async function EditPackagePage({
     .limit(5)
 
   const updateWithId = updatePackageStatus.bind(null, pkg.id)
-  const syncWithId = syncPackageCarrier.bind(null, pkg.id)
+  const syncWithId = syncPackageTracking.bind(null, pkg.id)
 
   return (
     <>
