@@ -85,7 +85,6 @@ export async function approveRequest(requestId: string, formData: FormData) {
         customerName,
         whatsappNumber: request.whatsappNumber,
         clerkUserId: request.clerkUserId,
-        carrier: null,
       })
       .returning()
     pkg = inserted
