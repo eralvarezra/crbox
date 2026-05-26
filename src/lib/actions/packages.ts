@@ -9,6 +9,8 @@ import { revalidatePath } from 'next/cache'
 import { sendStatusUpdate } from '@/lib/whatsapp'
 import { STATUS_ORDER } from '@/lib/status'
 import type { PackageStatus } from '@/lib/status'
+import { getCarrierStatus } from '@/lib/carriers'
+import type { Carrier } from '@/lib/carriers'
 
 async function requireAdmin() {
   const { sessionClaims } = await auth()
@@ -27,24 +29,39 @@ export async function createPackage(formData: FormData) {
   const description = (formData.get('description') as string)?.trim() || null
   const whatsappNumber = (formData.get('whatsappNumber') as string)?.trim() || null
   const clerkUserId = (formData.get('clerkUserId') as string)?.trim() || null
+  const carrier = (formData.get('carrier') as string)?.trim() || null
 
+  let pkg: typeof packages.$inferSelect
   try {
-    const [pkg] = await db
+    const [inserted] = await db
       .insert(packages)
-      .values({ trackingNumber, customerName, description, whatsappNumber, clerkUserId })
+      .values({ trackingNumber, customerName, description, whatsappNumber, clerkUserId, carrier: carrier as Carrier | null })
       .returning()
 
     await db.insert(statusHistory).values({
-      packageId: pkg.id,
+      packageId: inserted.id,
       status: 'received_usa',
       note: null,
     })
+
+    pkg = inserted
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     if (msg.includes('23505') || msg.includes('unique')) {
       throw new Error(`Tracking number ${trackingNumber} already exists`)
     }
     throw err
+  }
+
+  if (carrier) {
+    const result = await getCarrierStatus(carrier as Carrier, trackingNumber).catch(() => null)
+    await db
+      .update(packages)
+      .set({
+        carrierRawStatus: result?.rawStatus ?? null,
+        carrierLastSynced: new Date(),
+      })
+      .where(eq(packages.id, pkg.id))
   }
 
   redirect('/admin')
@@ -104,4 +121,27 @@ export async function linkPackageToUser(trackingNumber: string) {
     .where(eq(packages.trackingNumber, trackingNumber))
 
   revalidatePath('/dashboard')
+}
+
+export async function syncPackageCarrier(packageId: string) {
+  await requireAdmin()
+
+  const pkg = await db.query.packages.findFirst({
+    where: eq(packages.id, packageId),
+    columns: { carrier: true, trackingNumber: true },
+  })
+
+  if (!pkg?.carrier) throw new Error('Package has no carrier assigned')
+
+  const result = await getCarrierStatus(pkg.carrier as Carrier, pkg.trackingNumber).catch(() => null)
+
+  await db
+    .update(packages)
+    .set({
+      carrierRawStatus: result?.rawStatus ?? null,
+      carrierLastSynced: new Date(),
+    })
+    .where(eq(packages.id, packageId))
+
+  revalidatePath(`/admin/packages/${packageId}`)
 }
