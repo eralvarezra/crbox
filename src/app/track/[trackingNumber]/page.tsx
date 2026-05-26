@@ -7,6 +7,8 @@ import { StatusTimeline } from '@/components/status-timeline'
 import { LinkPackageButton } from '@/components/link-package-button'
 import Link from 'next/link'
 import type { PackageStatus } from '@/lib/status'
+import { CARRIER_LABELS } from '@/lib/carriers'
+import type { Carrier } from '@/lib/carriers'
 
 export default async function TrackPage({
   params,
@@ -91,6 +93,15 @@ export default async function TrackPage({
             createdAt: h.createdAt,
           }))}
         />
+
+        {pkg.carrierRawStatus && pkg.carrier && (
+          <div className="mt-6 p-4 bg-white rounded-xl border border-gray-100">
+            <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+              Estado {CARRIER_LABELS[pkg.carrier as Carrier]}
+            </div>
+            <p className="text-sm text-gray-700">{pkg.carrierRawStatus}</p>
+          </div>
+        )}
 
         {canLink && (
           <div className="mt-8 pt-6 border-t">
