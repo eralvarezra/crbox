@@ -35,12 +35,30 @@ describe('registerTracking', () => {
   it('throws when tracking number is rejected by 17track', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ code: 0, data: { accepted: [], rejected: [{ number: '1Z123' }] } }),
+      json: () => Promise.resolve({
+        code: 0,
+        data: { accepted: [], rejected: [{ number: '1Z123', error: { code: -18000000 } }] },
+      }),
     }))
 
     await expect(registerTracking('1Z123')).rejects.toThrow(
       '17track rejected tracking number: 1Z123'
     )
+  })
+
+  it('does not throw when tracking number is already registered', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        code: 0,
+        data: {
+          accepted: [],
+          rejected: [{ number: '1Z123', error: { code: -18019901, message: 'already registered' } }],
+        },
+      }),
+    }))
+
+    await expect(registerTracking('1Z123')).resolves.toBeUndefined()
   })
 
   it('throws when API key is missing', async () => {
@@ -65,9 +83,11 @@ describe('getTrackingStatus', () => {
         data: {
           accepted: [{
             number: '1Z123',
-            track: {
-              z0: { z: 'Delivered', a: 'San Jose, CR', d: '2024-01-01T12:00:00' },
-              w1: 'UPS',
+            track_info: {
+              latest_status: { status: 'Delivered' },
+              tracking: {
+                providers: [{ provider: { key: 11, name: 'UPS' } }],
+              },
             },
           }],
           rejected: [],
@@ -87,7 +107,7 @@ describe('getTrackingStatus', () => {
       json: () => Promise.resolve({
         code: 0,
         data: {
-          accepted: [{ number: '1Z123', track: {} }],
+          accepted: [{ number: '1Z123', track_info: {} }],
           rejected: [],
         },
       }),

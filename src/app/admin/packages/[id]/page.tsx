@@ -81,7 +81,20 @@ export default async function EditPackagePage({
             {pkg.whatsappNumber ? '💬 Guardar y notificar por WhatsApp' : 'Guardar cambios'}
           </button>
         </form>
-        {pkg.carrierRawStatus && (
+        {pkg.trackingNumber.toUpperCase().startsWith('TBA') ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-3 md:col-span-2">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Tracking Amazon</div>
+            <p className="text-xs text-gray-500">Amazon no comparte datos de tracking con terceros.</p>
+            <a
+              href={`https://track.amazon.com/tracking/${pkg.trackingNumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Ver en Amazon →
+            </a>
+          </div>
+        ) : pkg.carrierRawStatus ? (
           <div className="bg-white rounded-xl shadow-sm p-6 space-y-3 md:col-span-2">
             <div className="text-sm font-semibold text-gray-700 mb-2">
               Tracking 17track
@@ -103,7 +116,7 @@ export default async function EditPackagePage({
               </button>
             </form>
           </div>
-        )}
+        ) : null}
         <div>
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Historial reciente</h2>
           <div className="space-y-2">

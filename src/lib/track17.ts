@@ -17,7 +17,9 @@ export async function registerTracking(trackingNumber: string): Promise<void> {
   })
   if (!res.ok) throw new Error(`17track register error: ${res.status}`)
   const data = await res.json()
-  if (data.data?.rejected?.length > 0) {
+  const rejections: Array<{ error?: { code?: number } }> = data.data?.rejected ?? []
+  const realRejections = rejections.filter(r => r.error?.code !== -18019901)
+  if (realRejections.length > 0) {
     throw new Error(`17track rejected tracking number: ${trackingNumber}`)
   }
 }
@@ -44,9 +46,10 @@ export async function getTrackingStatus(trackingNumber: string): Promise<TrackRe
     throw new Error(`17track rejected tracking number: ${trackingNumber}${reason}`)
   }
 
-  const track = accepted.track
-  const rawStatus: string = track?.z0?.z ?? 'Unknown'
-  const detectedCarrier: string | undefined = track?.w1 ?? undefined
+  const trackInfo = accepted.track_info
+  const rawStatus: string = trackInfo?.latest_status?.status ?? 'Unknown'
+  const detectedCarrier: string | undefined =
+    trackInfo?.tracking?.providers?.[0]?.provider?.name ?? undefined
 
   return { rawStatus, detectedCarrier }
 }
