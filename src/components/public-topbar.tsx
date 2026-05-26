@@ -1,3 +1,4 @@
+import type React from 'react'
 import Link from 'next/link'
 
 function Logo() {
@@ -21,12 +22,12 @@ export function PublicTopBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
       <div className="flex items-center gap-4 text-[13.5px] text-[#525252] font-medium">
         {rightSlot ?? (
           <>
-            <a href="#" className="text-[#525252] hover:text-[#0A0A0A] transition-colors">
+            <button type="button" className="text-[#525252] hover:text-[#0A0A0A] transition-colors bg-transparent border-0 cursor-pointer font-medium text-[13.5px] font-sans p-0">
               Ayuda
-            </a>
-            <a href="#" className="text-[#525252] hover:text-[#0A0A0A] transition-colors">
+            </button>
+            <button type="button" className="text-[#525252] hover:text-[#0A0A0A] transition-colors bg-transparent border-0 cursor-pointer font-medium text-[13.5px] font-sans p-0">
               Cómo funciona
-            </a>
+            </button>
             <Link
               href="/sign-in"
               className="px-[14px] py-[7px] rounded-[8px] border border-[#E5E5E5] bg-white text-[13px] text-[#0A0A0A] hover:bg-gray-50 transition-colors"
