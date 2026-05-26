@@ -48,6 +48,12 @@ describe('registerTracking', () => {
 
     await expect(registerTracking('1Z123')).rejects.toThrow('Missing SEVENTEEN_TRACK_API_KEY')
   })
+
+  it('throws when API returns non-ok status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }))
+
+    await expect(registerTracking('1Z123')).rejects.toThrow('17track register error: 429')
+  })
 })
 
 describe('getTrackingStatus', () => {
@@ -113,5 +119,25 @@ describe('getTrackingStatus', () => {
     delete process.env.SEVENTEEN_TRACK_API_KEY
 
     await expect(getTrackingStatus('1Z123')).rejects.toThrow('Missing SEVENTEEN_TRACK_API_KEY')
+  })
+
+  it('throws when API returns non-ok status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
+
+    await expect(getTrackingStatus('1Z123')).rejects.toThrow('17track gettrackinfo error: 500')
+  })
+
+  it('throws when accepted and rejected are both empty', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        code: 0,
+        data: { accepted: [], rejected: [] },
+      }),
+    }))
+
+    await expect(getTrackingStatus('1Z123')).rejects.toThrow(
+      '17track rejected tracking number: 1Z123'
+    )
   })
 })
