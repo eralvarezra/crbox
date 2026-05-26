@@ -55,7 +55,14 @@ export default async function EditPackagePage({
           {pkg.whatsappNumber && (
             <div>
               <div className="text-xs uppercase text-gray-500 tracking-wide mb-1">WhatsApp</div>
-              <p className="text-sm text-gray-600">{pkg.whatsappNumber}</p>
+              <a
+                href={`https://wa.me/${pkg.whatsappNumber.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-green-600 hover:underline"
+              >
+                {pkg.whatsappNumber}
+              </a>
             </div>
           )}
           <div>

@@ -86,7 +86,16 @@ export default async function RequestsPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3">{req.customerName ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-500">{req.whatsappNumber}</td>
+                  <td className="px-4 py-3">
+                    <a
+                      href={`https://wa.me/${req.whatsappNumber.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:underline text-sm"
+                    >
+                      {req.whatsappNumber}
+                    </a>
+                  </td>
                   <td className="px-4 py-3 text-gray-500">
                     {req.createdAt.toLocaleDateString('es-CR')}
                   </td>

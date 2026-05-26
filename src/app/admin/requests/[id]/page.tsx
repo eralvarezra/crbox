@@ -86,7 +86,14 @@ export default async function RequestDetailPage({
 
           <div>
             <div className="text-xs uppercase text-gray-500 tracking-wide mb-1">WhatsApp</div>
-            <p className="text-sm">{request.whatsappNumber}</p>
+            <a
+              href={`https://wa.me/${request.whatsappNumber.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-green-600 hover:underline"
+            >
+              {request.whatsappNumber}
+            </a>
           </div>
 
           <div>
