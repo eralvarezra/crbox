@@ -108,4 +108,10 @@ describe('getTrackingStatus', () => {
       '17track rejected tracking number: 1Z123 — Invalid tracking number'
     )
   })
+
+  it('throws when API key is missing', async () => {
+    delete process.env.SEVENTEEN_TRACK_API_KEY
+
+    await expect(getTrackingStatus('1Z123')).rejects.toThrow('Missing SEVENTEEN_TRACK_API_KEY')
+  })
 })
