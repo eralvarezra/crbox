@@ -220,6 +220,44 @@ export default async function TrackPage({
       )
     }
 
+    if (pendingRequest?.status === 'rejected') {
+      return (
+        <div className="min-h-screen bg-white flex flex-col">
+          <PublicTopBar />
+          <div className="flex-1 relative grid place-items-center py-12 px-8">
+            <GridBg />
+            <div className="relative z-10 w-full max-w-[520px] flex flex-col items-center text-center">
+              <h1 className="text-[32px] font-semibold tracking-[-0.03em] text-[#0A0A0A] m-0">
+                Solicitud rechazada
+              </h1>
+              <p className="text-[15px] text-[#737373] mt-3 leading-[1.55] max-w-[400px]">
+                Tu solicitud para registrar{' '}
+                <code className="font-mono text-[13px] bg-[#F5F5F5] px-[7px] py-[2px] rounded-[5px] text-[#404040] border border-[#E5E5E5]">
+                  {normalizedTracking}
+                </code>{' '}
+                fue rechazada. Podés registrar uno nuevo o contactar soporte.
+              </p>
+              <div className="mt-8 flex gap-[10px]">
+                <Link
+                  href="/request"
+                  className="h-[44px] px-5 rounded-[10px] bg-[#4F46E5] text-white font-semibold text-[14px] flex items-center gap-2 border-0 hover:bg-[#4338CA] transition-colors"
+                  style={{ boxShadow: '0 1px 0 rgba(255,255,255,.15) inset, 0 4px 14px -4px rgba(79,70,229,.5)' }}
+                >
+                  Registrar de nuevo
+                </Link>
+                <Link
+                  href="/"
+                  className="h-[44px] px-5 rounded-[10px] bg-white border border-[#E5E5E5] text-[#0A0A0A] font-medium text-[14px] flex items-center hover:bg-gray-50 transition-colors"
+                >
+                  Volver al inicio
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     // ── State: not found ──────────────────────────────────────────
     return (
       <div className="min-h-screen bg-white flex flex-col">
@@ -306,7 +344,7 @@ export default async function TrackPage({
   const { userId } = await auth()
   const canLink = !!userId && !pkg.clerkUserId
 
-  const currentIndex = STATUS_ORDER.indexOf(pkg.status as PackageStatus)
+  const currentIndex = Math.max(0, STATUS_ORDER.indexOf(pkg.status as PackageStatus))
   const progressPct = PROGRESS_PCT[currentIndex] ?? 100
   const isDelivered = pkg.status === 'delivered'
 
@@ -539,6 +577,7 @@ export default async function TrackPage({
           {/* Secondary actions */}
           <div className="mt-5 flex gap-[10px] flex-wrap">
             <button
+              type="button"
               className="px-4 py-[10px] rounded-[10px] border border-[#E5E5E5] bg-white text-[13.5px] font-medium text-[#0A0A0A] cursor-pointer font-sans inline-flex items-center gap-2 hover:bg-gray-50 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -547,6 +586,7 @@ export default async function TrackPage({
               Avisarme por WhatsApp
             </button>
             <button
+              type="button"
               className="px-4 py-[10px] rounded-[10px] border border-[#E5E5E5] bg-white text-[13.5px] font-medium text-[#0A0A0A] cursor-pointer font-sans inline-flex items-center gap-2 hover:bg-gray-50 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -557,6 +597,7 @@ export default async function TrackPage({
               Compartir
             </button>
             <button
+              type="button"
               className="px-4 py-[10px] rounded-[10px] border border-[#E5E5E5] bg-white text-[13.5px] font-medium text-[#525252] cursor-pointer font-sans ml-auto hover:bg-gray-50 transition-colors"
             >
               ¿Algo está mal?
