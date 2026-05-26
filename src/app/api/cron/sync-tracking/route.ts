@@ -7,7 +7,8 @@ import type { Carrier } from '@/lib/carriers'
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secret = process.env.CRON_SECRET
+  if (!secret || authHeader !== `Bearer ${secret}`) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

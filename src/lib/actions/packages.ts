@@ -31,6 +31,11 @@ export async function createPackage(formData: FormData) {
   const clerkUserId = (formData.get('clerkUserId') as string)?.trim() || null
   const carrier = (formData.get('carrier') as string)?.trim() || null
 
+  const VALID_CARRIERS = ['ups', 'fedex', 'usps', 'dhl'] as const
+  if (carrier && !VALID_CARRIERS.includes(carrier as typeof VALID_CARRIERS[number])) {
+    throw new Error('Invalid carrier value')
+  }
+
   let pkg: typeof packages.$inferSelect
   try {
     const [inserted] = await db
@@ -55,13 +60,15 @@ export async function createPackage(formData: FormData) {
 
   if (carrier) {
     const result = await getCarrierStatus(carrier as Carrier, trackingNumber).catch(() => null)
-    await db
-      .update(packages)
-      .set({
-        carrierRawStatus: result?.rawStatus ?? null,
-        carrierLastSynced: new Date(),
-      })
-      .where(eq(packages.id, pkg.id))
+    if (result) {
+      await db
+        .update(packages)
+        .set({
+          carrierRawStatus: result.rawStatus,
+          carrierLastSynced: new Date(),
+        })
+        .where(eq(packages.id, pkg.id))
+    }
   }
 
   redirect('/admin')
@@ -135,13 +142,15 @@ export async function syncPackageCarrier(packageId: string) {
 
   const result = await getCarrierStatus(pkg.carrier as Carrier, pkg.trackingNumber).catch(() => null)
 
-  await db
-    .update(packages)
-    .set({
-      carrierRawStatus: result?.rawStatus ?? null,
-      carrierLastSynced: new Date(),
-    })
-    .where(eq(packages.id, packageId))
+  if (result) {
+    await db
+      .update(packages)
+      .set({
+        carrierRawStatus: result.rawStatus,
+        carrierLastSynced: new Date(),
+      })
+      .where(eq(packages.id, packageId))
+  }
 
   revalidatePath(`/admin/packages/${packageId}`)
 }
