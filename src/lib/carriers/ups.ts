@@ -11,9 +11,12 @@ async function getToken(): Promise<string> {
   if (tokenCache && Date.now() < tokenCache.expiresAt) {
     return tokenCache.value
   }
-  const credentials = Buffer.from(
-    `${process.env.UPS_CLIENT_ID}:${process.env.UPS_CLIENT_SECRET}`
-  ).toString('base64')
+  const clientId = process.env.UPS_CLIENT_ID
+  const clientSecret = process.env.UPS_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    throw new Error('Missing UPS credentials: set UPS_CLIENT_ID and UPS_CLIENT_SECRET')
+  }
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
   const res = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
     method: 'POST',
@@ -25,6 +28,9 @@ async function getToken(): Promise<string> {
   })
   if (!res.ok) throw new Error(`UPS auth error: ${res.status}`)
   const data = await res.json()
+  if (!data.access_token || typeof data.expires_in !== 'number') {
+    throw new Error('Invalid UPS token response: missing access_token or expires_in')
+  }
   tokenCache = {
     value: data.access_token,
     expiresAt: Date.now() + (data.expires_in - 60) * 1000,

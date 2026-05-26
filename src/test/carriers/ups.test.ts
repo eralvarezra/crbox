@@ -68,4 +68,13 @@ describe('ups.getStatus', () => {
     const result = await getStatus('1Z999AA10123456784')
     expect(result.rawStatus).toBe('Unknown')
   })
+
+  it('throws when UPS OAuth token endpoint returns error', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+    )
+
+    const { getStatus } = await import('@/lib/carriers/ups')
+    await expect(getStatus('1Z999AA10123456784')).rejects.toThrow('UPS auth error: 401')
+  })
 })
