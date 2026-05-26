@@ -7,19 +7,25 @@ vi.mock('next/link', () => ({
   ),
 }))
 
+vi.mock('@clerk/nextjs', () => ({
+  useUser: () => ({ isSignedIn: false }),
+  SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  UserButton: () => <button type="button">UserButton</button>,
+}))
+
 test('renders CRBox logo text', () => {
   render(<PublicTopBar />)
   expect(screen.getByText('CRBox')).toBeInTheDocument()
 })
 
-test('renders default nav: Ayuda and Ingresar', () => {
+test('renders default nav with sign-in and register when signed out', () => {
   render(<PublicTopBar />)
-  expect(screen.getByText('Ayuda')).toBeInTheDocument()
-  expect(screen.getByText('Ingresar')).toBeInTheDocument()
+  expect(screen.getByText('Iniciar sesión')).toBeInTheDocument()
+  expect(screen.getByText('Registrarse')).toBeInTheDocument()
 })
 
 test('renders custom rightSlot when provided', () => {
   render(<PublicTopBar rightSlot={<span>Custom slot</span>} />)
   expect(screen.getByText('Custom slot')).toBeInTheDocument()
-  expect(screen.queryByText('Ayuda')).not.toBeInTheDocument()
+  expect(screen.queryByText('Iniciar sesión')).not.toBeInTheDocument()
 })

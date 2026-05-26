@@ -7,8 +7,6 @@ import { PublicTopBar } from '@/components/public-topbar'
 import Link from 'next/link'
 import type { PackageStatus } from '@/lib/status'
 import { STATUS_ORDER, STATUS_LABELS } from '@/lib/status'
-import { CARRIER_LABELS } from '@/lib/carriers'
-import type { Carrier } from '@/lib/carriers'
 import type React from 'react'
 
 const GRID_BG_STYLE: React.CSSProperties = {
@@ -427,17 +425,6 @@ export default async function TrackPage({
                 {STATUS_BADGE_TEXT[pkg.status as PackageStatus]}
               </div>
 
-              {/* Carrier raw status */}
-              {pkg.carrier && (
-                <div className="text-[12px] text-[#525252] flex items-center gap-2">
-                  <span className="font-mono px-[7px] py-[2px] bg-[#F5F5F5] border border-[#E5E5E5] rounded-[5px] text-[11px] font-medium text-[#404040]">
-                    {CARRIER_LABELS[pkg.carrier as Carrier]}
-                  </span>
-                  {pkg.carrierRawStatus && (
-                    <span>{pkg.carrierRawStatus.length > 30 ? pkg.carrierRawStatus.slice(0, 30) + '…' : pkg.carrierRawStatus}</span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 

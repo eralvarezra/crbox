@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { PackageSearchForm } from '@/components/package-search-form'
 import { PublicTopBar } from '@/components/public-topbar'
 
@@ -47,6 +48,17 @@ export default function HomePage() {
           {/* Search form */}
           <div className="mt-10 w-full">
             <PackageSearchForm />
+          </div>
+
+          {/* Register CTA */}
+          <div className="mt-5 flex items-center gap-[6px] text-[13px] text-[#737373]">
+            <span>¿Aún no tenés cuenta?</span>
+            <Link
+              href="/request"
+              className="text-[#4F46E5] font-medium hover:underline"
+            >
+              Registrar mi paquete →
+            </Link>
           </div>
 
           {/* Trust strip */}
